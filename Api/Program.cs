@@ -48,7 +48,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-builder.Services.AddEndpointsApiExplorer(); builder.Services.AddSwaggerGen();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.EnableAnnotations();
+});
 builder.Services.AddHealthChecks();
 #endregion
 
@@ -61,7 +65,7 @@ app.UseExceptionHandler(a => a.Run(async ctx => {
 }));
 #endregion
 
-#region Uses
+#region Uses e Add
 app.UseSerilogRequestLogging();
 app.UseAuthentication(); 
 app.UseAuthorization();
@@ -71,6 +75,7 @@ app.UseSwaggerUI();
 
 #region Swagger 
 var g = app.MapGroup("/api/v1/orders").RequireAuthorization();
+
 #region MELHORIAS FUTURAS
 g.MapPost("/", async (ApiEcommerce.Application.Orders.Commands.CreateOrder.CreateOrderCommand c, IMediator m) => Results.Created($"/api/v1/orders/{await m.Send(c)}", null));
 
@@ -89,7 +94,9 @@ g.MapPatch("/{id}/cancel", async (int id, IMediator m) => (await m.Send(new ApiE
 g.MapDelete("/{id}", async (int id, IMediator m) => (await m.Send(new ApiEcommerce.Application.Orders.Commands.DeleteOrder.DeleteOrderCommand(id)) ? Results.Ok() : Results.NotFound()));
 
 app.MapHealthChecks("/health");
+
 #endregion
+
 #endregion
 
 app.Run();
