@@ -30,3 +30,27 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "ApiEcommerce.dll"]
+
+
+FROM mcr.microsoft.com/dotnet/aspnet:9.0
+WORKDIR /app
+COPY . .
+ENTRYPOINT ["dotnet","Api.dll"]
+
+
+docker-compose.yml
+version: '3.8'
+services:
+  api:
+    build: .
+    ports: ["5000:80"]
+    depends_on: [sql, redis]
+  sql:
+    image: mcr.microsoft.com/mssql/server
+    environment:
+      SA_PASSWORD: "Your_password123"
+      ACCEPT_EULA: "Y"
+    ports: ["1433:1433"]
+  redis:
+    image: redis
+    ports: ["6379:6379"]
