@@ -26,7 +26,7 @@ public class OrdersController : ControllerBase
     }
 
     [HttpGet]
-    [SwaggerOperation("Retorna um ou mais pedidos a partir do seu status")]
+    [SwaggerOperation("Retorna um ou mais pedidos a partir do seu status, ou todos caso nenuhm filtro seja adicionado")]
     public async Task<IActionResult> Get([FromQuery] Domain.Enums.OrderStatus? status)
     {
         var result = await _mediator.Send(new Application.Orders.Queries.GetOrders.GetOrdersQuery(status));
