@@ -43,6 +43,8 @@ public static class DependencyInjection
 
         var jwt = config.GetSection("Jwt");
         var key = Encoding.UTF8.GetBytes(jwt["SecretKey"]);
+        if (string.IsNullOrEmpty(jwt["SecretKey"]))
+            throw new Exception("JWT SecretKey não configurada");
 
         services.AddAuthentication(op => { 
         op.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
