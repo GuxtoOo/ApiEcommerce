@@ -5,5 +5,12 @@ using Application.Orders.DTOs;
 
 public record CreateOrderCommand(
     int BuyerId,
-    List<OrderItemDto> Items
+    List<OrderItemDto> itens
 ) : IRequest<int>;
+
+public record CreateOrderItemDto(
+    int ProductId,
+    decimal Price,
+    int Quantity,
+    decimal TotalPrice
+);

@@ -2,12 +2,14 @@
 
 using MediatR;
 using Domain.Enums;
-using Domain.Entities;
 using Application.Common;
+using ApiEcommerce.Application.Orders.DTOs;
 
 public record GetOrdersQuery(OrderStatus? Status)
-    : IRequest<List<Order>>, ICacheable
+    : IRequest<List<OrderDto>>, ICacheable
 {
-    public string CacheKey => $"orders_{Status}";
+    public string CacheKey => Status.HasValue
+    ? $"orders_status_{Status}"
+    : "orders_all";
     public int ExpirationMinutes => 5;
 }

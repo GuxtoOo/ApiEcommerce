@@ -15,11 +15,11 @@ public class CreateOrderHandler : IRequestHandler<CreateOrderCommand, int>
 
     public async Task<int> Handle(CreateOrderCommand request, CancellationToken ct)
     {
-        var items = request.Items
-            .Select(i => new OrderItem(i.ProductId, i.Price, i.Quantity))
+        var itens = request.itens
+            .Select(i => new OrderItems(i.ProductId, i.Price, i.Quantity))
             .ToList();
 
-        var order = new Order(request.BuyerId, items);
+        var order = Order.Create(request.BuyerId, itens);
 
         await _repo.AddAsync(order);
 

@@ -1,9 +1,11 @@
 ﻿using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
 namespace ApiEcommerce.Api.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/v1/orders")]
 public class OrdersController : ControllerBase
@@ -24,7 +26,7 @@ public class OrdersController : ControllerBase
     }
 
     [HttpGet]
-    [SwaggerOperation("Retorna um ou mais pedidos a partir do seu status")]
+    [SwaggerOperation("Retorna um ou mais pedidos a partir do seu status, ou todos caso nenuhm filtro seja adicionado")]
     public async Task<IActionResult> Get([FromQuery] Domain.Enums.OrderStatus? status)
     {
         var result = await _mediator.Send(new Application.Orders.Queries.GetOrders.GetOrdersQuery(status));
@@ -41,7 +43,7 @@ public class OrdersController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [SwaggerOperation("Atualiza um único pedido")]
+    [SwaggerOperation("Atualiza um único pedido e seus itens")]
     public async Task<IActionResult> Update(int id, [FromBody] Application.Orders.Commands.UpdateOrder.UpdateOrderCommand cmd)
     {
         if (id != cmd.Id) return BadRequest();

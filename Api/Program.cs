@@ -1,19 +1,22 @@
 using MediatR;
 using Serilog;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using ApiEcommerce.Application.Behaviors;
 using ApiEcommerce.Infrastructure.Persistence;
-using ApiEcommerce.Infrastructure.Persistence.Repositories;
 using ApiEcommerce.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
-using ApiEcommerce.Application;
+using Microsoft.OpenApi.Models;
+using ApiEcommerce.Application.Orders.Commands.Login;
+using ApiEcommerce.Application.Orders.Commands.CreateOrder;
+using ApiEcommerce.Application.Orders.Commands.UpdateOrder;
+using ApiEcommerce.Api.Config;
 
 var builder = WebApplication.CreateBuilder(args);
 
 #region Serilog
-Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateLogger();
+Log.Logger = new LoggerConfiguration()
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day)
+    .CreateLogger();
 builder.Host.UseSerilog();
 #endregion
 
@@ -22,11 +25,7 @@ builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlServer(builder.Configur
 #endregion
 
 #region DI
-builder.Services.AddScoped<IOrderRepository, OrderRepository>();
-builder.Services.AddMediatR(cfg =>
-    cfg.RegisterServicesFromAssembly(typeof(AssemblyReference).Assembly)
-);
-builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(CacheBehavior<,>));
+builder.Services.AddApplicationServices(builder.Configuration);
 #endregion
 
 #region Redis
@@ -34,21 +33,37 @@ builder.Services.AddStackExchangeRedisCache(o => o.Configuration = builder.Confi
 #endregion
 
 #region JWT
-var key = builder.Configuration["Jwt:Key"]!;
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-.AddJwtBearer(o => {
-    o.TokenValidationParameters = new TokenValidationParameters
+builder.Services.AddSwaggerGen(c =>
+{
+    c.EnableAnnotations();
+
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
-        ValidateIssuer = false,
-        ValidateAudience = false
-    };
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Digite: Bearer {token}"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
 });
 
-builder.Services.AddAuthorization();
-
-builder.Services.AddEndpointsApiExplorer(); builder.Services.AddSwaggerGen();
+builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddHealthChecks();
 #endregion
 
@@ -57,11 +72,18 @@ var app = builder.Build();
 #region Middleware ProblemDetails
 app.UseExceptionHandler(a => a.Run(async ctx => {
     ctx.Response.StatusCode = 500; ctx.Response.ContentType = "application/problem+json";
-    await ctx.Response.WriteAsJsonAsync(new { type = "https://httpstatuses.com/500", title = "Erro interno", status = 500 });
+    await ctx.Response.WriteAsJsonAsync(new
+    {
+        type = "https://httpstatuses.com/500",
+        title = "Erro interno no servidor",
+        status = 500,
+        detail = "Ocorreu um erro inesperado",
+        instance = ctx.Request.Path
+    });
 }));
 #endregion
 
-#region Uses
+#region Uses e Add
 app.UseSerilogRequestLogging();
 app.UseAuthentication(); 
 app.UseAuthorization();
@@ -69,27 +91,50 @@ app.UseSwagger();
 app.UseSwaggerUI();
 #endregion
 
-#region Swagger 
-var g = app.MapGroup("/api/v1/orders").RequireAuthorization();
-#region MELHORIAS FUTURAS
-g.MapPost("/", async (ApiEcommerce.Application.Orders.Commands.CreateOrder.CreateOrderCommand c, IMediator m) => Results.Created($"/api/v1/orders/{await m.Send(c)}", null));
+#region Swagger
 
-g.MapGet("/", async (OrderStatus? s, IMediator m) => Results.Ok(await m.Send(new ApiEcommerce.Application.Orders.Queries.GetOrders.GetOrdersQuery(s))));
+#region TODO: MELHORIAS FUTURAS, ACREDITO QUE DÁ PARA ENXUGAR
+var auth = app.MapGroup("/api/v1/auth").AllowAnonymous();
+
+auth.MapPost("/login", async (LoginRequest request, IMediator mediator) =>
+{
+    var token = await mediator.Send(request);
+
+    if (token is null)
+        return Results.Unauthorized();
+
+    return Results.Ok(new { token });
+}).AllowAnonymous().WithTags("Auth");
+
+var g = app.MapGroup("/api/v1/orders").RequireAuthorization();
+
+g.MapPost("/", async (CreateOrderCommand c, IMediator m) => Results.Created($"/api/v1/orders/{await m.Send(c)}", null)).WithTags("Orders").WithName("PostOrder");
+
+g.MapGet("/", async (OrderStatus? s, IMediator m) => Results.Ok(await m.Send(new ApiEcommerce.Application.Orders.Queries.GetOrders.GetOrdersQuery(s)))).WithTags("Orders").WithName("GetOrders");
 
 g.MapGet("/{id}", async (int id, IMediator m) =>
 {
     var o = await m.Send(new ApiEcommerce.Application.Orders.Queries.GetOrdersById.GetOrdersByIdQuery(id));
     return o is null ? Results.NotFound() : Results.Ok(o);
-});
+}).WithTags("Orders").WithName("GetOrderById");
 
-g.MapPut("/{id}", async (int id, ApiEcommerce.Application.Orders.Commands.UpdateOrder.UpdateOrderCommand c, IMediator m) => id != c.Id ? Results.BadRequest() : (await m.Send(c) ? Results.Ok() : Results.NotFound()));
+g.MapPut("/{id}", async (int id, UpdateOrderCommand cmd, IMediator m) =>
+{
+    cmd.SetId(id);
 
-g.MapPatch("/{id}/cancel", async (int id, IMediator m) => (await m.Send(new ApiEcommerce.Application.Orders.Commands.CancelOrder.CancelOrderCommand(id)) ? Results.Ok() : Results.NotFound()));
+    var result = await m.Send(cmd);
 
-g.MapDelete("/{id}", async (int id, IMediator m) => (await m.Send(new ApiEcommerce.Application.Orders.Commands.DeleteOrder.DeleteOrderCommand(id)) ? Results.Ok() : Results.NotFound()));
+    return result ? Results.Ok() : Results.NotFound();
+}).WithTags("Orders").WithName("PutOrder");
+
+g.MapPatch("/{id}/cancel", async (int id, IMediator m) => await m.Send(new ApiEcommerce.Application.Orders.Commands.CancelOrder.CancelOrderCommand(id)) ? Results.Ok() : Results.NotFound()).WithTags("Orders").WithName("CancelOrder");
+
+g.MapDelete("/{id}", async (int id, IMediator m) => await m.Send(new ApiEcommerce.Application.Orders.Commands.DeleteOrder.DeleteOrderCommand(id)) ? Results.Ok() : Results.NotFound()).WithTags("Orders").WithName("RemoveOrder");
 
 app.MapHealthChecks("/health");
+
 #endregion
+
 #endregion
 
 app.Run();
