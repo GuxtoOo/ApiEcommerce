@@ -61,19 +61,6 @@ public static class DependencyInjection
                     ValidAudience = jwt["Audience"],
                     IssuerSigningKey = new SymmetricSecurityKey(key)
                 };
-                options.Events = new JwtBearerEvents
-                {
-                    OnMessageReceived = context =>
-                    {
-                        Console.WriteLine("TOKEN: " + context.Token);
-                        return Task.CompletedTask;
-                    },
-                    OnAuthenticationFailed = context =>
-                    {
-                        Console.WriteLine("ERRO JWT: " + context.Exception.Message);
-                        return Task.CompletedTask;
-                    }
-                };
             });
 
         services.AddAuthorization();
