@@ -16,12 +16,29 @@ public class Order
     public int Id { get; private set; }
     public int BuyerId { get; private set; }
     public OrderStatus Status { get; private set; }
-    public List<OrderItem> Items { get; private set; } = new();
 
-    public Order(int buyerId, List<OrderItem> items)
+    private readonly List<OrderItems> _itens = new();
+    public IReadOnlyCollection<OrderItems> itens => _itens;
+
+    private Order() { }
+
+    public Order(int buyerId)
     {
-        if (!items.Any()) throw new ArgumentException("O pedido deve possuir ao menos um item.");
-        BuyerId = buyerId; Status = OrderStatus.Iniciado; Items = items;
+        BuyerId = buyerId;
+        Status = OrderStatus.Iniciado;
+    }
+
+    public static Order Create(int buyerId, List<OrderItems> itens)
+    {
+        if (itens == null || !itens.Any())
+            throw new ArgumentException("O pedido deve possuir ao menos um item.");
+
+        var order = new Order(buyerId);
+
+        foreach (var item in itens)
+            order._itens.Add(item);
+
+        return order;
     }
 
     public void Update(List<OrderItem> items)
