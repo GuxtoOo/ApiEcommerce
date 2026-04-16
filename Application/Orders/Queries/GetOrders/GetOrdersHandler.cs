@@ -2,19 +2,32 @@
 
 using MediatR;
 using Infrastructure.Persistence.Repositories;
-using ApiEcommerce.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
+using ApiEcommerce.Application.Orders.DTOs;
+using ApiEcommerce.Infrastructure.Persistence;
 
-public class GetOrdersHandler : IRequestHandler<GetOrdersQuery, List<Order>>
+public class GetOrdersHandler : IRequestHandler<GetOrdersQuery, List<OrderDto>>
 {
-    private readonly IOrderRepository _repo;
+    private readonly AppDbContext _context;
 
-    public GetOrdersHandler(IOrderRepository repo)
+    public GetOrdersHandler(AppDbContext context)
     {
-        _repo = repo;
+        _context = context;
     }
 
-    public async Task<List<Order>> Handle(GetOrdersQuery request, CancellationToken ct)
+    public async Task<List<OrderDto>> Handle(GetOrdersQuery request, CancellationToken ct)
     {
-        return await _repo.GetAllAsync(request.Status);
+        var query = _context.Orders.AsQueryable();
+
+        if (request.Status.HasValue)
+            query = query.Where(x => x.Status == request.Status.Value);
+
+        return await query
+            .Select(o => new OrderDto(
+                o.Id,
+                o.BuyerId,
+                o.Status
+            ))
+            .ToListAsync(ct);
     }
 }
