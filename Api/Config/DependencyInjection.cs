@@ -4,6 +4,12 @@ using ApiEcommerce.Infrastructure.Persistence;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using ApiEcommerce.Application;
+using ApiEcommerce.Infrastructure.Auth;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using ApiEcommerce.Infrastructure.Interfaces;
+using Microsoft.Extensions.Options;
 
 namespace ApiEcommerce.Api.Config;
 
@@ -24,13 +30,53 @@ public static class DependencyInjection
         );
 
         // Pipeline
-        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(CacheBehavior<,>));
+        //services.AddTransient(typeof(IPipelineBehavior<,>), typeof(CacheBehavior<,>));
 
         // Redis
-        services.AddStackExchangeRedisCache(opt =>
-        {
-            opt.Configuration = config.GetConnectionString("Redis");
-        });
+        //services.AddStackExchangeRedisCache(opt =>
+        //{
+        //    opt.Configuration = config.GetConnectionString("Redis");
+        //});
+
+        //JWT
+        services.AddScoped<IJwtService, JwtService>();
+
+        var jwt = config.GetSection("Jwt");
+        var key = Encoding.UTF8.GetBytes(jwt["SecretKey"]);
+
+        services.AddAuthentication(op => { 
+        op.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        op.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        })
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidateLifetime = true,
+
+                    ValidIssuer = jwt["Issuer"],
+                    ValidAudience = jwt["Audience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(key)
+                };
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        Console.WriteLine("TOKEN: " + context.Token);
+                        return Task.CompletedTask;
+                    },
+                    OnAuthenticationFailed = context =>
+                    {
+                        Console.WriteLine("ERRO JWT: " + context.Exception.Message);
+                        return Task.CompletedTask;
+                    }
+                };
+            });
+
+        services.AddAuthorization();
 
         return services;
     }

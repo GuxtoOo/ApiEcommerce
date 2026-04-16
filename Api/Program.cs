@@ -9,6 +9,11 @@ using ApiEcommerce.Infrastructure.Persistence.Repositories;
 using ApiEcommerce.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using ApiEcommerce.Application;
+using Microsoft.OpenApi.Models;
+using ApiEcommerce.Application.Orders.Commands.Login;
+using ApiEcommerce.Application.Orders.Commands.CreateOrder;
+using ApiEcommerce.Application.Orders.Commands.UpdateOrder;
+using ApiEcommerce.Api.Config;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,11 +27,7 @@ builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlServer(builder.Configur
 #endregion
 
 #region DI
-builder.Services.AddScoped<IOrderRepository, OrderRepository>();
-builder.Services.AddMediatR(cfg =>
-    cfg.RegisterServicesFromAssembly(typeof(AssemblyReference).Assembly)
-);
-builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(CacheBehavior<,>));
+builder.Services.AddApplicationServices(builder.Configuration);
 #endregion
 
 #region Redis
@@ -34,25 +35,37 @@ builder.Services.AddStackExchangeRedisCache(o => o.Configuration = builder.Confi
 #endregion
 
 #region JWT
-var key = builder.Configuration["Jwt:Key"]!;
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-.AddJwtBearer(o => {
-    o.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
-        ValidateIssuer = false,
-        ValidateAudience = false
-    };
-});
-
-builder.Services.AddAuthorization();
-
-builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.EnableAnnotations();
+
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Digite: Bearer {token}"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
 });
+
+builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddHealthChecks();
 #endregion
 
@@ -73,11 +86,23 @@ app.UseSwagger();
 app.UseSwaggerUI();
 #endregion
 
-#region Swagger 
+#region Swagger
+var auth = app.MapGroup("/api/v1/auth").AllowAnonymous();
+
+auth.MapPost("/login", async (LoginRequest request, IMediator mediator) =>
+{
+    var token = await mediator.Send(request);
+
+    if (token is null)
+        return Results.Unauthorized();
+
+    return Results.Ok(new { token });
+}).AllowAnonymous().WithTags("Auth");
+
 var g = app.MapGroup("/api/v1/orders").RequireAuthorization();
 
-#region MELHORIAS FUTURAS
-g.MapPost("/", async (ApiEcommerce.Application.Orders.Commands.CreateOrder.CreateOrderCommand c, IMediator m) => Results.Created($"/api/v1/orders/{await m.Send(c)}", null));
+#region TODO: MELHORIAS FUTURAS, ACREDITO QUE DÁ PARA ENXUGAR
+g.MapPost("/", async (CreateOrderCommand c, IMediator m) => Results.Created($"/api/v1/orders/{await m.Send(c)}", null));
 
 g.MapGet("/", async (OrderStatus? s, IMediator m) => Results.Ok(await m.Send(new ApiEcommerce.Application.Orders.Queries.GetOrders.GetOrdersQuery(s))));
 
@@ -87,7 +112,7 @@ g.MapGet("/{id}", async (int id, IMediator m) =>
     return o is null ? Results.NotFound() : Results.Ok(o);
 });
 
-g.MapPut("/{id}", async (int id, ApiEcommerce.Application.Orders.Commands.UpdateOrder.UpdateOrderCommand c, IMediator m) => id != c.Id ? Results.BadRequest() : (await m.Send(c) ? Results.Ok() : Results.NotFound()));
+g.MapPut("/{id}", async (int id, UpdateOrderCommand c, IMediator m) => id != c.Id ? Results.BadRequest() : (await m.Send(c) ? Results.Ok() : Results.NotFound()));
 
 g.MapPatch("/{id}/cancel", async (int id, IMediator m) => (await m.Send(new ApiEcommerce.Application.Orders.Commands.CancelOrder.CancelOrderCommand(id)) ? Results.Ok() : Results.NotFound()));
 

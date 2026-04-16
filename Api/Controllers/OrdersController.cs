@@ -1,9 +1,11 @@
 ﻿using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
 namespace ApiEcommerce.Api.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/v1/orders")]
 public class OrdersController : ControllerBase
