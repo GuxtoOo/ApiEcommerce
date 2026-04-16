@@ -92,6 +92,8 @@ app.UseSwaggerUI();
 #endregion
 
 #region Swagger
+
+#region TODO: MELHORIAS FUTURAS, ACREDITO QUE DÁ PARA ENXUGAR
 var auth = app.MapGroup("/api/v1/auth").AllowAnonymous();
 
 auth.MapPost("/login", async (LoginRequest request, IMediator mediator) =>
@@ -106,16 +108,15 @@ auth.MapPost("/login", async (LoginRequest request, IMediator mediator) =>
 
 var g = app.MapGroup("/api/v1/orders").RequireAuthorization();
 
-#region TODO: MELHORIAS FUTURAS, ACREDITO QUE DÁ PARA ENXUGAR
-g.MapPost("/", async (CreateOrderCommand c, IMediator m) => Results.Created($"/api/v1/orders/{await m.Send(c)}", null));
+g.MapPost("/", async (CreateOrderCommand c, IMediator m) => Results.Created($"/api/v1/orders/{await m.Send(c)}", null)).WithTags("Orders").WithName("PostOrder");
 
-g.MapGet("/", async (OrderStatus? s, IMediator m) => Results.Ok(await m.Send(new ApiEcommerce.Application.Orders.Queries.GetOrders.GetOrdersQuery(s))));
+g.MapGet("/", async (OrderStatus? s, IMediator m) => Results.Ok(await m.Send(new ApiEcommerce.Application.Orders.Queries.GetOrders.GetOrdersQuery(s)))).WithTags("Orders").WithName("GetOrders");
 
 g.MapGet("/{id}", async (int id, IMediator m) =>
 {
     var o = await m.Send(new ApiEcommerce.Application.Orders.Queries.GetOrdersById.GetOrdersByIdQuery(id));
     return o is null ? Results.NotFound() : Results.Ok(o);
-});
+}).WithTags("Orders").WithName("GetOrderById");
 
 g.MapPut("/{id}", async (int id, UpdateOrderCommand cmd, IMediator m) =>
 {
@@ -124,11 +125,11 @@ g.MapPut("/{id}", async (int id, UpdateOrderCommand cmd, IMediator m) =>
     var result = await m.Send(cmd);
 
     return result ? Results.Ok() : Results.NotFound();
-});
+}).WithTags("Orders").WithName("PutOrder");
 
-g.MapPatch("/{id}/cancel", async (int id, IMediator m) => (await m.Send(new ApiEcommerce.Application.Orders.Commands.CancelOrder.CancelOrderCommand(id)) ? Results.Ok() : Results.NotFound()));
+g.MapPatch("/{id}/cancel", async (int id, IMediator m) => await m.Send(new ApiEcommerce.Application.Orders.Commands.CancelOrder.CancelOrderCommand(id)) ? Results.Ok() : Results.NotFound()).WithTags("Orders").WithName("CancelOrder");
 
-g.MapDelete("/{id}", async (int id, IMediator m) => (await m.Send(new ApiEcommerce.Application.Orders.Commands.DeleteOrder.DeleteOrderCommand(id)) ? Results.Ok() : Results.NotFound()));
+g.MapDelete("/{id}", async (int id, IMediator m) => await m.Send(new ApiEcommerce.Application.Orders.Commands.DeleteOrder.DeleteOrderCommand(id)) ? Results.Ok() : Results.NotFound()).WithTags("Orders").WithName("RemoveOrder");
 
 app.MapHealthChecks("/health");
 
