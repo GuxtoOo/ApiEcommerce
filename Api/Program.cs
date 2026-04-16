@@ -12,7 +12,11 @@ using ApiEcommerce.Api.Config;
 var builder = WebApplication.CreateBuilder(args);
 
 #region Serilog
-Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateLogger();
+Log.Logger = new LoggerConfiguration()
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day)
+    .CreateLogger();
 builder.Host.UseSerilog();
 #endregion
 
