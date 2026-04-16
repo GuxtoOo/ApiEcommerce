@@ -43,7 +43,7 @@ public class OrdersController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [SwaggerOperation("Atualiza um único pedido")]
+    [SwaggerOperation("Atualiza um único pedido e seus itens")]
     public async Task<IActionResult> Update(int id, [FromBody] Application.Orders.Commands.UpdateOrder.UpdateOrderCommand cmd)
     {
         if (id != cmd.Id) return BadRequest();
