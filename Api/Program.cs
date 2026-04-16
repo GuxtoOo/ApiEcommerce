@@ -72,7 +72,14 @@ var app = builder.Build();
 #region Middleware ProblemDetails
 app.UseExceptionHandler(a => a.Run(async ctx => {
     ctx.Response.StatusCode = 500; ctx.Response.ContentType = "application/problem+json";
-    await ctx.Response.WriteAsJsonAsync(new { type = "https://httpstatuses.com/500", title = "Erro interno", status = 500 });
+    await ctx.Response.WriteAsJsonAsync(new
+    {
+        type = "https://httpstatuses.com/500",
+        title = "Erro interno no servidor",
+        status = 500,
+        detail = "Ocorreu um erro inesperado",
+        instance = ctx.Request.Path
+    });
 }));
 #endregion
 
