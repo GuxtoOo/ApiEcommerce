@@ -30,13 +30,13 @@ public static class DependencyInjection
         );
 
         // Pipeline
-        //services.AddTransient(typeof(IPipelineBehavior<,>), typeof(CacheBehavior<,>));
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(CacheBehavior<,>));
 
         // Redis
-        //services.AddStackExchangeRedisCache(opt =>
-        //{
-        //    opt.Configuration = config.GetConnectionString("Redis");
-        //});
+        services.AddStackExchangeRedisCache(opt =>
+        {
+            opt.Configuration = config.GetConnectionString("Redis");
+        });
 
         //JWT
         services.AddScoped<IJwtService, JwtService>();
