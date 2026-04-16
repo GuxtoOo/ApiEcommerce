@@ -1,14 +1,8 @@
 using MediatR;
 using Serilog;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using ApiEcommerce.Application.Behaviors;
 using ApiEcommerce.Infrastructure.Persistence;
-using ApiEcommerce.Infrastructure.Persistence.Repositories;
 using ApiEcommerce.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
-using ApiEcommerce.Application;
 using Microsoft.OpenApi.Models;
 using ApiEcommerce.Application.Orders.Commands.Login;
 using ApiEcommerce.Application.Orders.Commands.CreateOrder;
