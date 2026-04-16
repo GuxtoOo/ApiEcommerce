@@ -112,7 +112,14 @@ g.MapGet("/{id}", async (int id, IMediator m) =>
     return o is null ? Results.NotFound() : Results.Ok(o);
 });
 
-g.MapPut("/{id}", async (int id, UpdateOrderCommand c, IMediator m) => id != c.Id ? Results.BadRequest() : (await m.Send(c) ? Results.Ok() : Results.NotFound()));
+g.MapPut("/{id}", async (int id, UpdateOrderCommand cmd, IMediator m) =>
+{
+    cmd.SetId(id);
+
+    var result = await m.Send(cmd);
+
+    return result ? Results.Ok() : Results.NotFound();
+});
 
 g.MapPatch("/{id}/cancel", async (int id, IMediator m) => (await m.Send(new ApiEcommerce.Application.Orders.Commands.CancelOrder.CancelOrderCommand(id)) ? Results.Ok() : Results.NotFound()));
 

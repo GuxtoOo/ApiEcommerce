@@ -3,7 +3,12 @@
 using ApiEcommerce.Application.Orders.DTOs;
 using MediatR;
 
-public record UpdateOrderCommand(
-    int Id,
-    List<OrderItemDto> Items
-) : IRequest<bool>;
+
+public class UpdateOrderCommand : IRequest<bool>
+{
+    public int Id { get; private set; }
+    public int BuyerId { get; init; }
+    public List<OrderItemDto> Itens { get; init; }
+
+    public void SetId(int id) => Id = id;
+}

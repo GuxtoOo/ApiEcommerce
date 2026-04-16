@@ -52,15 +52,20 @@ public class Order
         return order;
     }
 
-    public void Update(List<OrderItem> items)
+    public void Update(List<OrderItems> itens)
     {
-        if (Status != OrderStatus.Iniciado) throw new InvalidOperationException("Não é possível alterar informações de pedidos com status diferente de 'Iniciado'.");
-        Items = items;
+        if (Status != OrderStatus.Iniciado)
+            throw new InvalidOperationException("Não é possível alterar informações de pedidos com status diferente de 'Iniciado'.");
+
+        _itens.Clear();
+        _itens.AddRange(itens);
     }
+
     public void Cancel()
     {
         if (Status is not (OrderStatus.Iniciado or OrderStatus.Processado))
             throw new InvalidOperationException("Não é possível realizar o cancelamento de pedidos com status 'Enviado' ou 'Cancelado'.");
+
         Status = OrderStatus.Cancelado;
     }
 }

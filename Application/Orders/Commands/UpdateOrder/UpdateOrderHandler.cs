@@ -20,11 +20,11 @@ public class UpdateOrderHandler : IRequestHandler<UpdateOrderCommand, bool>
         if (order is null)
             return false;
 
-        var items = request.Items
-            .Select(i => new OrderItem(i.ProductId, i.Price, i.Quantity))
+        var itens = request.Itens
+            .Select(i => new OrderItems(i.ProductId, i.Price, i.Quantity))
             .ToList();
 
-        order.Update(items);
+        order.Update(itens);
 
         await _repo.UpdateAsync(order);
 
