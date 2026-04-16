@@ -2,13 +2,24 @@
 
 namespace ApiEcommerce.Domain.Entities;
 
-public class OrderItem
+public class OrderItems
 {
     public int ProductId { get; private set; }
     public decimal Price { get; private set; }
     public int Quantity { get; private set; }
-    public OrderItem(int productId, decimal price, int quantity)
-    { ProductId = productId; Price = price; Quantity = quantity; }
+    public decimal TotalPrice { get; private set; }
+    private OrderItems() { }
+
+    public OrderItems(int productId, decimal price, int quantity)
+    {
+        if (quantity <= 0)
+            throw new ArgumentException("A quantidade dos itens informada deve ser maior que zero.");
+
+        ProductId = productId;
+        Price = price;
+        Quantity = quantity;
+        TotalPrice = price * quantity;
+    }
 }
 
 public class Order
