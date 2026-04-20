@@ -1,7 +1,6 @@
 ﻿namespace ApiEcommerce.Application.Orders.Queries.GetOrders;
 
 using MediatR;
-using Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 using ApiEcommerce.Application.Orders.DTOs;
 using ApiEcommerce.Infrastructure.Persistence;
@@ -23,10 +22,12 @@ public class GetOrdersHandler : IRequestHandler<GetOrdersQuery, List<OrderDto>>
             query = query.Where(x => x.Status == request.Status.Value);
 
         return await query
+            .AsNoTracking()
             .Select(o => new OrderDto(
                 o.Id,
                 o.BuyerId,
-                o.Status
+                o.Status,
+                o.itens
             ))
             .ToListAsync(ct);
     }
